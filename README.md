@@ -20,7 +20,7 @@ A secure and customizable password generator built with React and TailwindCSS.
 
 1. Clone the repository
    ```
-   git clone <repository-url>
+   git clone (https://github.com/gaurav-github1/Password_Generator/)
    cd passwordGenerator
    ```
 
