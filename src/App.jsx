@@ -6,7 +6,8 @@ function App() {
   const [password, setPassword] = useState('')
   const [length, setLength] = useState(8)
   const [isNumberAllowed, setIsNumberAllowed] = useState(false)
-  const [isCharAllowed,setIsCharAllowed] = useState(false)
+  const [isCharAllowed, setIsCharAllowed] = useState(false)
+  const [isPronounceable, setIsPronounceable] = useState(false)
   const [passwordStrength, setPasswordStrength] = useState({
     score: 0,
     label: 'Too Weak',
@@ -52,36 +53,75 @@ function App() {
     return strength;
   }, []);
 
-  const generatePassword = useCallback(()=>{
-    let pass = ''
-
-    let str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    const num = "0123456789"
-    const char = "!#$%&()*+,-./:;<=>?@[\]^_`{|}"
-
-    if(isNumberAllowed) str += num
-
-    if(isCharAllowed) str += char
+  const generatePronounceablePassword = useCallback((len, includeNumbers, includeChars) => {
+    const consonants = 'bcdfghjklmnpqrstvwxyz';
+    const vowels = 'aeiou';
+    const numbers = '0123456789';
+    const specialChars = '!#$%&*-+?@_';
     
-    for (let i = 0; i < length; i++) {
+    let pass = '';
+    let isConsonant = Math.random() > 0.5; // Randomly start with consonant or vowel
+    
+    const capitalize = () => Math.random() > 0.7; // 30% chance to capitalize
+    
+    while (pass.length < len) {
+      if (isConsonant) {
+        const char = consonants.charAt(Math.floor(Math.random() * consonants.length));
+        pass += capitalize() ? char.toUpperCase() : char;
+      } else {
+        const char = vowels.charAt(Math.floor(Math.random() * vowels.length));
+        pass += capitalize() ? char.toUpperCase() : char;
+      }
       
-      const charIndex = Math.floor(Math.random() * str.length )
-      pass += str[charIndex]
-
+      // Switch between consonants and vowels
+      isConsonant = !isConsonant;
+      
+      // Add numbers or special chars occasionally
+      if (includeNumbers && pass.length < len && Math.random() > 0.8) {
+        pass += numbers.charAt(Math.floor(Math.random() * numbers.length));
+      }
+      
+      if (includeChars && pass.length < len && Math.random() > 0.9) {
+        pass += specialChars.charAt(Math.floor(Math.random() * specialChars.length));
+      }
     }
-    setPassword(pass)
-    setPasswordStrength(calculatePasswordStrength(pass))
+    
+    // Trim to exact length (may be longer due to added numbers/chars)
+    return pass.substring(0, len);
+  }, []);
 
-  },[isCharAllowed, isNumberAllowed, length, setPassword, calculatePasswordStrength])
+  const generatePassword = useCallback(() => {
+    let pass = '';
 
-  const clickToCopyOnClipboard = useCallback(()=>{
+    if (isPronounceable) {
+      pass = generatePronounceablePassword(length, isNumberAllowed, isCharAllowed);
+    } else {
+      let str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      const num = "0123456789";
+      const char = "!#$%&()*+,-./:;<=>?@[\]^_`{|}";
+
+      if (isNumberAllowed) str += num;
+      if (isCharAllowed) str += char;
+      
+      for (let i = 0; i < length; i++) {
+        const charIndex = Math.floor(Math.random() * str.length);
+        pass += str[charIndex];
+      }
+    }
+    
+    setPassword(pass);
+    setPasswordStrength(calculatePasswordStrength(pass));
+
+  }, [isCharAllowed, isNumberAllowed, length, isPronounceable, generatePronounceablePassword, calculatePasswordStrength]);
+
+  const clickToCopyOnClipboard = useCallback(() => {
     passwordRef.current?.select();
     window.navigator.clipboard.writeText(password);
-  },[password])
+  }, [password]);
 
-  useEffect(()=>{
+  useEffect(() => {
     generatePassword();
-  },[isCharAllowed,isNumberAllowed ,length,generatePassword ])
+  }, [isCharAllowed, isNumberAllowed, length, isPronounceable, generatePassword]);
 
   return (
     <div 
@@ -90,11 +130,9 @@ function App() {
       <h1 className='text-white text-center my-4 mx-2'>Password Generator</h1>
 
       <div className='flex overflow-hidden my-2 mx-.5 rounded-lg shadow'>
-
-
         <input 
         type="text"
-        className='outline-none p-3 w-full '
+        className='outline-none p-3 w-full'
         value={password}
         placeholder='password'
         readOnly
@@ -105,7 +143,6 @@ function App() {
         onClick={clickToCopyOnClipboard}
         className='bg-blue-600 px-3 py-1 text-center text-white shrink-0 hover:bg-blue-800'
         >copy</button>
-      
       </div>
 
       <div className="w-full mt-4 mb-6">
@@ -121,7 +158,7 @@ function App() {
         </div>
       </div>
 
-      <div className='flex text-lg justify-evenly m-3'>
+      <div className='flex flex-wrap text-lg justify-evenly m-3 gap-y-3'>
         <div className='flex items-center text-sm gap-x-1'>
           <input 
           type='range'
@@ -129,18 +166,18 @@ function App() {
           max={64}
           value={length}
           className='cursor-pointer'
-          onChange={(event)=>{setLength(event.target.value)}}
+          onChange={(event) => {setLength(event.target.value)}}
           />
-          <label >Length :{length}</label>
+          <label>Length: {length}</label>
         </div>
 
         <div className='flex items-center gap-x-1'>
           <input 
           type="checkbox"
-          defaultChecked ={isNumberAllowed}
+          checked={isNumberAllowed}
           id='numberInput'
-          onChange={()=>{
-            setIsNumberAllowed((prev)=>!prev)
+          onChange={() => {
+            setIsNumberAllowed((prev) => !prev)
           }}
           />
           <label htmlFor="numberInput">Number</label>
@@ -149,16 +186,27 @@ function App() {
         <div className='flex items-center gap-x-1'>
           <input 
           type="checkbox"
-          defaultChecked ={isCharAllowed}
+          checked={isCharAllowed}
           id='charInput'
-          onChange={()=>{
-            setIsCharAllowed((prev)=>!prev)
+          onChange={() => {
+            setIsCharAllowed((prev) => !prev)
           }}
           />
           <label htmlFor="charInput">Character</label>
         </div>
+
+        <div className='flex items-center gap-x-1'>
+          <input 
+          type="checkbox"
+          checked={isPronounceable}
+          id='pronounceableInput'
+          onChange={() => {
+            setIsPronounceable((prev) => !prev)
+          }}
+          />
+          <label htmlFor="pronounceableInput">Memorable</label>
+        </div>
       </div>
-      
     </div>
   )
 }
