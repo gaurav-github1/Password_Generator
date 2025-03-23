@@ -7,8 +7,50 @@ function App() {
   const [length, setLength] = useState(8)
   const [isNumberAllowed, setIsNumberAllowed] = useState(false)
   const [isCharAllowed,setIsCharAllowed] = useState(false)
+  const [passwordStrength, setPasswordStrength] = useState({
+    score: 0,
+    label: 'Too Weak',
+    color: 'bg-red-500'
+  })
 
   const passwordRef = useRef(null);
+
+  const calculatePasswordStrength = useCallback((password) => {
+    let score = 0;
+    
+    // Check password length
+    if (password.length >= 8) score += 1;
+    if (password.length >= 12) score += 1;
+    if (password.length >= 16) score += 1;
+    
+    // Check for numbers
+    if (/\d/.test(password)) score += 1;
+    
+    // Check for special characters
+    if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) score += 1;
+    
+    // Check for uppercase and lowercase
+    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score += 1;
+    
+    // Calculate strength based on score
+    let strength = {
+      score: score,
+      label: 'Too Weak',
+      color: 'bg-red-500'
+    };
+    
+    if (score === 0 || score === 1) {
+      strength = { score, label: 'Too Weak', color: 'bg-red-500' };
+    } else if (score === 2 || score === 3) {
+      strength = { score, label: 'Weak', color: 'bg-orange-500' };
+    } else if (score === 4 || score === 5) {
+      strength = { score, label: 'Medium', color: 'bg-yellow-500' };
+    } else {
+      strength = { score, label: 'Strong', color: 'bg-green-500' };
+    }
+    
+    return strength;
+  }, []);
 
   const generatePassword = useCallback(()=>{
     let pass = ''
@@ -28,8 +70,9 @@ function App() {
 
     }
     setPassword(pass)
+    setPasswordStrength(calculatePasswordStrength(pass))
 
-  },[isCharAllowed,isNumberAllowed ,length ,setPassword])
+  },[isCharAllowed, isNumberAllowed, length, setPassword, calculatePasswordStrength])
 
   const clickToCopyOnClipboard = useCallback(()=>{
     passwordRef.current?.select();
@@ -63,6 +106,19 @@ function App() {
         className='bg-blue-600 px-3 py-1 text-center text-white shrink-0 hover:bg-blue-800'
         >copy</button>
       
+      </div>
+
+      <div className="w-full mt-4 mb-6">
+        <div className="flex justify-between text-sm mb-1">
+          <span>Password Strength:</span>
+          <span className="font-medium">{passwordStrength.label}</span>
+        </div>
+        <div className="w-full h-2 bg-gray-200 rounded-full">
+          <div 
+            className={`h-full rounded-full ${passwordStrength.color}`} 
+            style={{ width: `${(passwordStrength.score / 6) * 100}%` }}
+          ></div>
+        </div>
       </div>
 
       <div className='flex text-lg justify-evenly m-3'>
